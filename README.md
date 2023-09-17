@@ -11,7 +11,7 @@ My version was built after the competition had finished. So I could inspire on o
 My intention was to do a simple version and then do performances updates:
 | Version | Description | Result |
 |---------|-------------|--------|
-|         |             |        |
+|  1.0    | First version without index in search |  14973 |
 
 
 ## Requirements
