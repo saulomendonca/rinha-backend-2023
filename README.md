@@ -12,6 +12,7 @@ My intention was to do a simple version and then do performances updates:
 | Version | Description | Result |
 |---------|-------------|--------|
 |  1.0    | First version without index in search |  14973 |
+|  2.0    | Added index to seach pessoas |  21140 |
 
 
 ## Requirements

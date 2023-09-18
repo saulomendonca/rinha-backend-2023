@@ -8,7 +8,7 @@ class PessoasController < ApplicationController
       term = "%#{params[:t]}%"
       @pessoas = Pessoa
         .where(
-          "apelido ilike :term OR nome ilike :term OR array_to_string(stack, ',', '*') ilike :term",
+          "searchable ilike :term",
           term: term
         )
         .limit(MAX_RESULTS)

@@ -8,6 +8,5 @@ class CreatePessoas < ActiveRecord::Migration[7.0]
 
       t.timestamps
     end
-    add_index :pessoas, :stack, using: 'gin'
   end
 end

@@ -10,8 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2023_09_09_182654) do
+ActiveRecord::Schema[7.0].define(version: 2023_09_17_003333) do
   # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_trgm"
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
 
@@ -22,7 +23,8 @@ ActiveRecord::Schema[7.0].define(version: 2023_09_09_182654) do
     t.string "stack", array: true
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["stack"], name: "index_pessoas_on_stack", using: :gin
+    t.virtual "searchable", type: :text, as: "(((((nome)::text || ' '::text) || (apelido)::text) || ' '::text) || (stack)::text[])", stored: true
+    t.index ["searchable"], name: "index_pessoas_on_searchable", opclass: :gin_trgm_ops, using: :gin
   end
 
 end
