@@ -1,4 +1,6 @@
 class Pessoa < ApplicationRecord
+  before_validation :set_id, on: :create
+
   validates :apelido, :nascimento, :nome, presence: true
 
   validates :apelido, length: { in: 1..32 }
@@ -7,6 +9,12 @@ class Pessoa < ApplicationRecord
 
   validate :validate_date
   validate :validate_stack
+
+  private
+
+  def set_id
+    self.id ||= SecureRandom.uuid
+  end
 
   def validate_date
     nascimento.to_date if nascimento.present?

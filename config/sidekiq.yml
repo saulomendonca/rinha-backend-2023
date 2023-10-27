@@ -1,0 +1,5 @@
+:scheduler:
+  :schedule:
+    pessoa_flush:
+      every: '10s'
+      class: PessoasFlushJob

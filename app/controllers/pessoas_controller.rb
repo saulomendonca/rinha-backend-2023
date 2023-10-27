@@ -1,6 +1,7 @@
 class PessoasController < ApplicationController
   before_action :set_pessoa, only: %i[ show update destroy ]
   MAX_RESULTS = 50
+  CACHE_EXPIRES = 10.minutes
 
   # GET /pessoas
   def index
@@ -22,21 +23,30 @@ class PessoasController < ApplicationController
   # GET /pessoas/1
   def show
     if @pessoa
-      render json: @pessoa
+      render json: @pessoa.attributes.except('searchable')
     else
       head :not_found
     end
   end
 
-  # POST /pessoas
   def create
     return unless validate_params
 
+    if Rails.cache.fetch("a/#{pessoa_params[:apelido]}")
+      head :unprocessable_entity
+      return
+    end
+
     @pessoa = Pessoa.new(pessoa_params)
 
+    if @pessoa.valid?
+      Rails.cache.write("a/#{@pessoa.apelido}", '', expires_in: CACHE_EXPIRES)
+      Rails.cache.write("p/#{@pessoa.id}", @pessoa, expires_in: CACHE_EXPIRES)
 
-    if @pessoa.save
-      render json: @pessoa, status: :created, location: "/pessoas/#{@pessoa.id}"
+      pessoa_hash = pessoa_params.to_h
+      pessoa_hash[:id] = @pessoa.id
+      Pessoas::CreatePessoaAsync.new.save(pessoa_hash)
+      render json: pessoa_hash, status: :created, location: "/pessoas/#{@pessoa.id}"
     else
       head :unprocessable_entity
     end
@@ -58,7 +68,9 @@ class PessoasController < ApplicationController
 
   private
     def set_pessoa
-      @pessoa = Pessoa.find_by(id: params[:id])
+      @pessoa = Rails.cache.fetch("p/#{params[:id]}", expires_in: CACHE_EXPIRES) do
+        Pessoa.find_by(id: params[:id])
+      end
     end
 
     def pessoa_params

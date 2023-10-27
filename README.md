@@ -3,6 +3,7 @@ This project was based on the challenge 'Rinha backend 2023':
  - [Challenge instructions](https://github.com/zanfranceschi/rinha-de-backend-2023-q3/blob/main/INSTRUCOES.md)
 
 My version was built after the competition had finished. So I could inspire on other implementations, such as:
+ - https://github.com/viniciusfonseca/rinha-backend-rust
  - https://github.com/leandronsp/rinha-backend-ruby
  - https://github.com/lazaronixon/rinha_de_backend
  - https://github.com/akitaonrails/rinhabackend-rails-api
@@ -12,7 +13,8 @@ My intention was to do a simple version and then do performances updates:
 | Version | Description | Result |
 |---------|-------------|--------|
 |  1.0    | First version without index in search |  14973 |
-|  2.0    | Added index to seach pessoas |  21140 |
+|  2.0    | Added db index to seach pessoas |  21140 |
+|  3.0    | Added redis to cache and create a async service to insert users in batch|  24043 |
 
 
 ## Requirements

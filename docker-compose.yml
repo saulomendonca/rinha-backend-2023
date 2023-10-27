@@ -13,19 +13,62 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
       - RAILS_MASTER_KEY=ea6fbedaed66c1a5f03fc58b03a1ca29
+      - REDIS_HOST=redis
+      - REDIS_POOL_SIZE=50
+      - DB_POOL=80
+      - RAILS_MAX_THREADS=40
+      - WEB_CONCURRENCY=2
     depends_on:
       - db
+      - redis
     ports:
       - "3000"
     deploy:
       resources:
         limits:
-          cpus: '0.45'
+          cpus: '0.3'
           memory: '0.5GB'
   api2:
     <<: *api
     container_name: rinha-api-2
     entrypoint: "/rails/docker-entrypoint-2"
+
+  sidekiq1: &sidekiq
+    <<: *api
+    container_name: sidekiq-1
+    hostname: sidekiq
+    command: /rails/bin/bundle exec sidekiq -c 1 -q flush
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: '0.25GB'
+
+  sidekiq2:
+    <<: *sidekiq
+    container_name: sidekiq-2
+    hostname: sidekiq-2
+    command: /rails/bin/bundle exec sidekiq -q default
+    environment:
+      - RUBY_YJIT_ENABLE=1
+      - RAILS_ENV=production
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=rinha_production
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - RAILS_MASTER_KEY=ea6fbedaed66c1a5f03fc58b03a1ca29
+      - REDIS_HOST=redis
+      - REDIS_POOL_SIZE=50
+      - DB_POOL=0
+      - RAILS_MAX_THREADS=5
+      - WEB_CONCURRENCY=2
+      - IS_SCHEDULER=true
+      - JOB_BATCH_SIZE=100
+    deploy:
+      resources:
+        limits:
+          cpus: '0.05'
+          memory: '0.15GB'
 
   db:
     image: postgres:14.2-alpine
@@ -40,8 +83,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: '1.7GB'
+          cpus: '0.4'
+          memory: '1.2GB'
 
   nginx:
     image: nginx
@@ -58,3 +101,15 @@ services:
         limits:
           cpus: '0.1'
           memory: '0.3GB'
+
+  redis:
+    image: docker.io/redis:latest
+    hostname: redis
+    command: redis-server --save "" --appendonly no --maxclients 20000
+    expose:
+      - "6379"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.05'
+          memory: '0.1GB'

@@ -1,5 +1,9 @@
 require "test_helper"
 
+require 'mock_redis'
+require 'minitest/autorun'
+require 'sidekiq/testing'
+
 class PessoasControllerTest < ActionDispatch::IntegrationTest
   setup do
     @person = {
@@ -66,12 +70,19 @@ class PessoasControllerTest < ActionDispatch::IntegrationTest
 
   #Create
 
-  test "should create person" do
-    assert_difference("Pessoa.count") do
-      post pessoas_url, params: @person, as: :json
-    end
+  test "should return created when create a valid person" do
+    post pessoas_url, params: @person, as: :json
 
     assert_response :created
+  end
+
+  test "should queue a person to be saved on redis" do
+    buffer = RedisQueue.new(Pessoas::CreatePessoaAsync::BUFFER_KEY)
+    buffer.clear!
+    Pessoas::CreatePessoaAsync.class_variable_set(:@@buffer, buffer)
+
+    post pessoas_url, params: @person, as: :json
+    assert_equal 1, buffer.size
   end
 
   test "should set all data" do
@@ -88,7 +99,8 @@ class PessoasControllerTest < ActionDispatch::IntegrationTest
     post pessoas_url, params: @person, as: :json
 
     assert_response :created
-    assert_equal("/pessoas/#{Pessoa.find_by(apelido: @person[:apelido]).id}", response.header['Location'])
+
+    assert_equal("/pessoas/#{response.parsed_body["id"]}", response.header['Location'])
   end
 
   test "should not create a person with a not string nickname" do
@@ -103,6 +115,16 @@ class PessoasControllerTest < ActionDispatch::IntegrationTest
     post pessoas_url, params: @person, as: :json
 
     assert_response :unprocessable_entity
+  end
+
+  test "should not create a person with a repeated nickname, using cache" do
+    with_caching do
+      Rails.cache.write("a/#{@person[:apelido]}", '')
+
+      post pessoas_url, params: @person, as: :json
+
+      assert_response :unprocessable_entity
+    end
   end
 
   test "should not create a person without a nickname" do
@@ -199,9 +221,7 @@ class PessoasControllerTest < ActionDispatch::IntegrationTest
 
   test "should create person without stack" do
     @person[:stack] = nil
-    assert_difference("Pessoa.count") do
-      post pessoas_url, params: @person, as: :json
-    end
+    post pessoas_url, params: @person, as: :json
 
     assert_response :created
 
@@ -247,5 +267,21 @@ class PessoasControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :no_content
+  end
+
+  def with_caching
+    cache_store_type_origin = Rails.application.config.cache_store
+    cache_store_origin = Rails.cache
+    Rails.application.config.cache_store = [
+      :memory_store, {:size => 64.megabytes }
+    ]
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new(
+      :expires_in => 1.minute
+    )
+    yield
+  ensure
+    Rails.cache.clear
+    Rails.cache = cache_store_origin
+    Rails.application.config.cache_store = cache_store_type_origin
   end
 end
